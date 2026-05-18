@@ -1,0 +1,251 @@
+<template>
+  <div class="formula-add-container">
+    <el-card class="form-card">
+      <template #header>
+        <div class="card-header">
+          <span>添加新方剂</span>
+        </div>
+      </template>
+
+      <el-form
+        ref="formulaForm"
+        :model="formData"
+        :rules="rules"
+        label-width="120px"
+        label-position="top"
+      >
+        <!-- 基础信息 -->
+        <el-form-item label="方剂名称" prop="name">
+          <el-input v-model="formData.name" placeholder="请输入方剂名称" />
+        </el-form-item>
+
+        <el-row :gutter="20">
+          <el-col :span="12">
+            <el-form-item label="所属大类" prop="mainCategory">
+              <el-select
+                v-model="formData.mainCategory"
+                placeholder="请选择大类"
+                @change="handleMainCategoryChange"
+              >
+                <el-option
+                  v-for="item in mainCategories"
+                  :key="item.value"
+                  :label="item.label"
+                  :value="item.value"
+                />
+              </el-select>
+            </el-form-item>
+          </el-col>
+          <el-col :span="12">
+            <el-form-item label="所属小类" prop="subCategory">
+              <el-select
+                v-model="formData.subCategory"
+                placeholder="请选择小类"
+                :disabled="!formData.mainCategory"
+              >
+                <el-option
+                  v-for="item in subCategories"
+                  :key="item.value"
+                  :label="item.label"
+                  :value="item.value"
+                />
+              </el-select>
+            </el-form-item>
+          </el-col>
+        </el-row>
+
+        <el-form-item label="方剂出处" prop="source">
+          <el-input v-model="formData.source" placeholder="例如：《伤寒论》" />
+        </el-form-item>
+
+        <el-form-item label="方剂分类" prop="classification">
+          <el-input v-model="formData.classification" />
+        </el-form-item>
+
+        <!-- 核心内容 -->
+        <el-form-item label="组成药材及用量" prop="composition">
+          <el-input
+            v-model="formData.composition"
+            type="textarea"
+            :rows="3"
+            placeholder="请输入药材及用量，例如：当归10g、川芎8g"
+          />
+        </el-form-item>
+
+        <el-form-item label="方剂解释" prop="explanation">
+          <el-input v-model="formData.explanation" type="textarea" :rows="3" />
+        </el-form-item>
+
+        <el-form-item label="方剂功用" prop="functions">
+          <el-input v-model="formData.functions" type="textarea" :rows="2" />
+        </el-form-item>
+
+        <el-form-item label="主治" prop="indications">
+          <el-input
+            v-model="formData.indications"
+            type="textarea"
+            :rows="3"
+            placeholder="例如：营血虚滞证。症见头晕目眩，心悸失眠..."
+          />
+        </el-form-item>
+
+        <!-- 用法用量 -->
+        <el-form-item label="用法" prop="usageMethod">
+          <el-input
+            v-model="formData.usageMethod"
+            placeholder="例如：水煎服，一日一剂，分两次服用"
+          />
+        </el-form-item>
+
+        <el-form-item label="注意事项" prop="precautions">
+          <el-input
+            v-model="formData.precautions"
+            type="textarea"
+            :rows="2"
+            placeholder="例如：阴虚火旺者慎用，孕妇禁用"
+          />
+        </el-form-item>
+
+        <!-- 操作按钮 -->
+        <el-form-item>
+          <el-button type="primary" @click="submitForm">提交</el-button>
+          <el-button @click="resetForm">重置</el-button>
+        </el-form-item>
+      </el-form>
+    </el-card>
+  </div>
+</template>
+
+<script setup lang="ts">
+import { ref, reactive } from 'vue'
+import { ElMessage, type FormInstance, type FormRules } from 'element-plus'
+import axios from 'axios'
+
+// 表单数据类型
+interface FormulaForm {
+  name: string
+  mainCategory: string
+  subCategory: string
+  source: string
+  classification: string
+  composition: string
+  explanation: string
+  functions: string
+  indications: string
+  usageMethod: string
+  precautions: string
+}
+
+// 表单引用
+const formulaForm = ref<FormInstance>()
+
+// 表单数据
+const formData = reactive<FormulaForm>({
+  name: '',
+  mainCategory: '',
+  subCategory: '',
+  source: '',
+  classification: '',
+  composition: '',
+  explanation: '',
+  functions: '',
+  indications: '',
+  usageMethod: '',
+  precautions: '',
+})
+
+// 验证规则
+const rules = reactive<FormRules<FormulaForm>>({
+  name: [{ required: true, message: '请输入方剂名称', trigger: 'blur' }],
+  mainCategory: [{ required: true, message: '请选择所属大类', trigger: 'change' }],
+  composition: [{ required: true, message: '请输入组成药材', trigger: 'blur' }],
+  functions: [{ required: true, message: '请输入方剂功用', trigger: 'blur' }],
+})
+
+// 分类选项数据
+const mainCategories = ref([
+  { value: '补益剂', label: '补益剂' },
+  { value: '解表剂', label: '解表剂' },
+  { value: '清热剂', label: '清热剂' },
+  { value: '祛湿剂', label: '祛湿剂' },
+  { value: '理气剂', label: '理气剂' },
+])
+
+const subCategories = ref<{ value: string; label: string }[]>([])
+
+// 大类变化时加载对应小类
+const handleMainCategoryChange = (value: string) => {
+  formData.subCategory = '' // 清空之前选的小类
+
+  // 模拟根据大类动态加载小类
+  const subCategoryMap: Record<string, Array<{ value: string; label: string }>> = {
+    补益剂: [
+      { value: '补气剂', label: '补气剂' },
+      { value: '补血剂', label: '补血剂' },
+      { value: '补阴剂', label: '补阴剂' },
+      { value: '补阳剂', label: '补阳剂' },
+    ],
+    解表剂: [
+      { value: '辛温解表剂', label: '辛温解表剂' },
+      { value: '辛凉解表剂', label: '辛凉解表剂' },
+    ],
+    清热剂: [
+      { value: '清气分热剂', label: '清气分热剂' },
+      { value: '清热解毒剂', label: '清热解毒剂' },
+      { value: '清脏腑热剂', label: '清脏腑热剂' },
+    ],
+  }
+
+  subCategories.value = subCategoryMap[value] || []
+}
+
+// 提交表单
+const submitForm = async () => {
+  try {
+    // 验证表单
+    await formulaForm.value?.validate()
+
+    // 发送请求
+    const response = await axios.post(
+      'http://192.168.1.12:8088/encyclopedia/formulas/addFormula',
+      formData,
+    )
+
+    if (response.data.success) {
+      ElMessage.success('添加成功！')
+      resetForm()
+    } else {
+      ElMessage.error(response.data.errorMessage || '添加失败')
+    }
+  } catch (error) {
+    ElMessage.error('提交出错，请检查表单')
+    console.error('提交出错:', error)
+  }
+}
+
+// 重置表单
+const resetForm = () => {
+  formulaForm.value?.resetFields()
+}
+</script>
+
+<style scoped>
+.formula-add-container {
+  padding: 20px;
+  max-width: 1000px;
+  margin: 0 auto;
+}
+
+.form-card {
+  margin-top: 20px;
+}
+
+.card-header {
+  font-size: 18px;
+  font-weight: bold;
+}
+
+.el-form-item {
+  margin-bottom: 22px;
+}
+</style>
